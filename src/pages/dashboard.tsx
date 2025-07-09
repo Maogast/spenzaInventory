@@ -12,13 +12,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Stack
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material'
 import { DataGrid, GridColDef, GridCellParams } from '@mui/x-data-grid'
+import HistoryIcon from '@mui/icons-material/History'
 import MovementDialog from '../components/MovementDialog'
 import AddStockDialog from '../components/AddStockDialog'
 import DeductStockDialog from '../components/DeductStockDialog'
 import AddToStockDialog from '../components/AddToStockDialog'
+import StockMovementsDialog from '../components/StockMovementsDialog'
 
 interface Product {
   id: string
@@ -37,20 +41,17 @@ export default function Dashboard() {
   const qc = useQueryClient()
 
   // UI & pagination state
-  const [filter, setFilter]             = useState('')
-  const [page, setPage]                 = useState(0)
-  const [pageSize, setPageSize]         = useState(10)
-  const [moveInfo, setMoveInfo]         = useState<{id:string;stock:number}|null>(null)
-  const [deductInfo, setDeductInfo]     = useState<{id:string;stock:number}|null>(null)
-  const [addInfo, setAddInfo]           = useState<{id:string;stock:number}|null>(null)
+  const [filter, setFilter] = useState('')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  const [moveInfo, setMoveInfo] = useState<{ id: string; stock: number } | null>(null)
+  const [deductInfo, setDeductInfo] = useState<{ id: string; stock: number } | null>(null)
+  const [addInfo, setAddInfo] = useState<{ id: string; stock: number } | null>(null)
   const [openNewProduct, setOpenNewProduct] = useState(false)
+  const [historyProductId, setHistoryProductId] = useState<string | null>(null)
 
-  // 1) Fetch one page + total count
-  const {
-    data: paginated,
-    isLoading,
-    error
-  } = useQuery<PaginatedProducts, Error>({
+  // Fetch products page
+  const { data: paginated, isLoading, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products', page, pageSize] as const,
     queryFn: () =>
       fetch(`/api/products?page=${page}&pageSize=${pageSize}`)
@@ -58,13 +59,12 @@ export default function Dashboard() {
           if (!res.ok) throw new Error(res.statusText)
           return res.json() as Promise<PaginatedProducts>
         })
-    // keepPreviousData has been removed
   })
 
   const products = paginated?.data ?? []
   const rowCount = paginated?.count ?? 0
 
-  // 2) Unified mutation for Add/Move/Deduct
+  // Unified stock mutation
   const updateStock = useMutation<Product, Error, { id: string; newStock: number }>({
     mutationFn: async ({ id, newStock }) => {
       const res = await fetch(`/api/products/${id}`, {
@@ -82,9 +82,7 @@ export default function Dashboard() {
           if (!prev) return prev
           return {
             count: prev.count,
-            data: prev.data.map((p: Product) =>
-              p.id === updated.id ? updated : p
-            )
+            data: prev.data.map(p => p.id === updated.id ? updated : p)
           }
         }
       )
@@ -94,7 +92,7 @@ export default function Dashboard() {
     }
   })
 
-  // 3) Supabase real-time fallback
+  // Supabase real-time fallback
   useEffect(() => {
     let channelRef: any
     const subscribe = async () => {
@@ -112,24 +110,11 @@ export default function Dashboard() {
                 const { data, count } = prev
                 switch (eventType) {
                   case 'INSERT':
-                    return {
-                      count: count + 1,
-                      data: [prod, ...data.slice(0, pageSize - 1)]
-                    }
+                    return { count: count + 1, data: [prod, ...data.slice(0, pageSize - 1)] }
                   case 'UPDATE':
-                    return {
-                      count,
-                      data: data.map((p: Product) =>
-                        p.id === prod.id ? prod : p
-                      )
-                    }
+                    return { count, data: data.map(p => p.id === prod.id ? prod : p) }
                   case 'DELETE':
-                    return {
-                      count: count - 1,
-                      data: data.filter((p: Product) =>
-                        p.id !== (old as any).id
-                      )
-                    }
+                    return { count: count - 1, data: data.filter(p => p.id !== (old as any).id) }
                   default:
                     return prev
                 }
@@ -144,48 +129,56 @@ export default function Dashboard() {
   }, [qc, page, pageSize])
 
   if (isLoading) return <Typography>Loading…</Typography>
-  if (error)     return <Alert severity="error">{error.message}</Alert>
+  if (error) return <Alert severity="error">{error.message}</Alert>
 
-  // low-stock alert
-  const lowCount = products.filter((p: Product) => p.current_stock < 1000).length
+  // Low-stock alert
+  const lowCount = products.filter(p => p.current_stock < 1000).length
 
-  // client-side filter
+  // Client-side filtering
   const visible = filter
-    ? products.filter((p: Product) => p.category === filter)
+    ? products.filter(p => p.category === filter)
     : products
 
-  // DataGrid columns
+  // DataGrid columns with History
   const columns: GridColDef[] = [
-    { field:'name',      headerName:'Product', flex:1 },
-    { field:'sku',       headerName:'SKU',     width:120 },
-    { field:'category',  headerName:'Category',width:120 },
+    { field: 'name', headerName: 'Product', flex: 1 },
+    { field: 'sku', headerName: 'SKU', width: 120 },
+    { field: 'category', headerName: 'Category', width: 120 },
     {
-      field:'current_stock',
-      headerName:'Stock',
-      type:'number',
-      width:120,
-      cellClassName: (params:GridCellParams)=>
-        (params.value as number) < 1000 ? 'low':''  
+      field: 'current_stock',
+      headerName: 'Stock',
+      type: 'number',
+      width: 120,
+      cellClassName: (params: GridCellParams) =>
+        (params.value as number) < 1000 ? 'low' : ''
     },
     {
-      field:'actions',
-      headerName:'Actions',
-      width:260,
+      field: 'actions',
+      headerName: 'Actions',
+      width: 320,
       renderCell: params => {
-        const id    = params.row.id as string
+        const id = params.row.id as string
         const stock = params.row.current_stock as number
         return (
           <Stack direction="row" spacing={1}>
-            <Button size="small" onClick={()=>setAddInfo({id,stock})}>
+            <Tooltip title="History">
+              <IconButton
+                size="small"
+                onClick={() => setHistoryProductId(id)}
+              >
+                <HistoryIcon />
+              </IconButton>
+            </Tooltip>
+            <Button size="small" onClick={() => setAddInfo({ id, stock })}>
               Add
             </Button>
-            <Button size="small" onClick={()=>setMoveInfo({id,stock})}>
+            <Button size="small" onClick={() => setMoveInfo({ id, stock })}>
               Move
             </Button>
             <Button
               size="small"
               color="warning"
-              onClick={()=>setDeductInfo({id,stock})}
+              onClick={() => setDeductInfo({ id, stock })}
             >
               Deduct
             </Button>
@@ -196,26 +189,26 @@ export default function Dashboard() {
   ]
 
   return (
-    <Container sx={{ mt:4 }}>
+    <Container sx={{ mt: 4 }}>
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="h4">Inventory Dashboard</Typography>
-        <Button variant="contained" onClick={()=>setOpenNewProduct(true)}>
+        <Button variant="contained" onClick={() => setOpenNewProduct(true)}>
           + New Product
         </Button>
       </Stack>
 
       {lowCount > 0 && (
-        <Alert severity="error" sx={{ mb:2 }}>
-          🚨 {lowCount} product{lowCount > 1 ? 's':''} low on stock
+        <Alert severity="error" sx={{ mb: 2 }}>
+          🚨 {lowCount} product{lowCount > 1 ? 's' : ''} low on stock
         </Alert>
       )}
 
       <Box mb={2}>
-        <FormControl sx={{ minWidth:180 }}>
+        <FormControl sx={{ minWidth: 180 }}>
           <InputLabel>Category Filter</InputLabel>
           <Select
             value={filter}
-            onChange={e=>setFilter(e.target.value)}
+            onChange={e => setFilter(e.target.value)}
             label="Category Filter"
           >
             <MenuItem value="">All</MenuItem>
@@ -225,67 +218,73 @@ export default function Dashboard() {
         </FormControl>
       </Box>
 
-      <Box sx={{ height:600 }}>
+      <Box sx={{ height: 600 }}>
         <DataGrid
           rows={visible}
           columns={columns}
-          getRowId={row=>row.id}
+          getRowId={row => row.id}
           pagination
           paginationMode="server"
           rowCount={rowCount}
           paginationModel={{ page, pageSize }}
-          onPaginationModelChange={({page:p, pageSize:ps}) => {
-            setPage(p)
-            setPageSize(ps)
+          onPaginationModelChange={({ page, pageSize }) => {
+            setPage(page)
+            setPageSize(pageSize)
           }}
-          pageSizeOptions={[10,25,50]}
+          pageSizeOptions={[10, 25, 50]}
           loading={isLoading}
           sx={{
-            '.low': {
-              bgcolor:'rgba(255,82,82,0.1)',
-              color:'#d32f2f'
-            }
+            '.low': { bgcolor: 'rgba(255,82,82,0.1)', color: '#d32f2f' }
           }}
         />
       </Box>
 
-      {/* ADD EXISTING STOCK */}
+      {/* Add existing stock */}
       {addInfo && (
         <AddToStockDialog
           open
           currentStock={addInfo.stock}
-          onClose={()=>setAddInfo(null)}
-          onAdd={amt=>
-            updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amt })
+          onClose={() => setAddInfo(null)}
+          onAdd={amount =>
+            updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amount })
           }
         />
       )}
 
-      {/* MOVE STOCK */}
+      {/* Move stock */}
       {moveInfo && (
         <MovementDialog
           open
           currentStock={moveInfo.stock}
-          onClose={()=>setMoveInfo(null)}
-          onSaved={ns=>updateStock.mutate({ id:moveInfo.id, newStock:ns })}
+          onClose={() => setMoveInfo(null)}
+          onSaved={newStock => updateStock.mutate({ id: moveInfo.id, newStock })}
         />
       )}
 
-      {/* DEDUCT STOCK */}
+      {/* Deduct stock */}
       {deductInfo && (
         <DeductStockDialog
           open
           currentStock={deductInfo.stock}
-          onClose={()=>setDeductInfo(null)}
-          onDeduct={ns=>updateStock.mutate({ id:deductInfo.id, newStock:ns })}
+          onClose={() => setDeductInfo(null)}
+          onDeduct={newStock => updateStock.mutate({ id: deductInfo.id, newStock })}
         />
       )}
 
-      {/* NEW PRODUCT */}
+      {/* New product */}
       <AddStockDialog
         open={openNewProduct}
-        onClose={()=>setOpenNewProduct(false)}
+        onClose={() => setOpenNewProduct(false)}
       />
+
+      {/* Stock movement history */}
+      {historyProductId && (
+        <StockMovementsDialog
+          open
+          productId={historyProductId}
+          onClose={() => setHistoryProductId(null)}
+        />
+      )}
     </Container>
   )
 }
