@@ -1,4 +1,3 @@
-// src/components/AddStockDialog.tsx
 import React, { useState, ChangeEvent } from 'react'
 import {
   Dialog,
@@ -7,36 +6,29 @@ import {
   DialogActions,
   TextField,
   Button,
-  MenuItem
+  MenuItem,
+  useMediaQuery,
+  useTheme
 } from '@mui/material'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-interface Props {
-  open: boolean
-  onClose(): void
-}
-
+interface Props { open: boolean; onClose(): void }
 interface NewProduct {
   name: string
   sku: string
   category: 'feeds' | 'flour'
   current_stock: number
 }
-
-interface Product {
-  id: string
-  name: string
-  sku: string
-  category: 'feeds' | 'flour'
-  current_stock: number
-}
+interface Product extends NewProduct { id: string }
 
 export default function AddStockDialog({ open, onClose }: Props) {
-  const [name, setName] = useState<string>('')
-  const [sku, setSku] = useState<string>('')
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const [name, setName] = useState('')
+  const [sku, setSku] = useState('')
   const [category, setCategory] = useState<'feeds' | 'flour'>('feeds')
-  const [stock, setStock] = useState<number>(0)
-  const [saving, setSaving] = useState<boolean>(false)
+  const [stock, setStock] = useState(0)
+  const [saving, setSaving] = useState(false)
   const qc = useQueryClient()
 
   const addProduct = useMutation<Product, Error, NewProduct>({
@@ -45,53 +37,59 @@ export default function AddStockDialog({ open, onClose }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProduct)
-      }).then(res => {
-        if (!res.ok) throw new Error('Failed to add product')
-        return res.json() as Promise<Product>
+      }).then(r => {
+        if (!r.ok) throw new Error('Failed to add product')
+        return r.json()
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['products'] })
-    }
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] })
   })
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await addProduct.mutateAsync({
-        name,
-        sku,
-        category,
-        current_stock: stock
+        name, sku, category, current_stock: stock
       })
       onClose()
-    } catch {
-      // handle error
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="xs"
+    >
       <DialogTitle>Add New Product / Stock</DialogTitle>
-      <DialogContent sx={{ display: 'grid', gap: 2, width: 300 }}>
+      <DialogContent
+        sx={{
+          display: 'grid',
+          gap: 2,
+          width: fullScreen ? '100%' : 360
+        }}
+      >
         <TextField
           label="Name"
           value={name}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          fullWidth
         />
         <TextField
           label="SKU"
           value={sku}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setSku(e.target.value)}
+          fullWidth
         />
         <TextField
           select
           label="Category"
           value={category}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setCategory(e.target.value as 'feeds' | 'flour')
-          }
+          onChange={e => setCategory(e.target.value as any)}
+          fullWidth
         >
           <MenuItem value="feeds">Feeds</MenuItem>
           <MenuItem value="flour">Flour</MenuItem>
@@ -100,16 +98,13 @@ export default function AddStockDialog({ open, onClose }: Props) {
           type="number"
           label="Initial Stock"
           value={stock}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            setStock(Number(e.target.value))
-          }
+          onChange={e => setStock(Number(e.target.value))}
           inputProps={{ min: 0 }}
+          fullWidth
         />
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>
-          Cancel
-        </Button>
+      <DialogActions sx={{ px: 2, pb: 2 }}>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </Button>

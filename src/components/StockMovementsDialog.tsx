@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+// src/components/StockMovementsDialog.tsx
+import React, { useEffect } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -10,7 +11,9 @@ import {
   TableRow,
   TableCell,
   CircularProgress,
-  Typography
+  Typography,
+  useTheme,
+  useMediaQuery
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import { useQuery } from '@tanstack/react-query'
@@ -29,13 +32,14 @@ interface Props {
   onClose(): void
 }
 
-export default function StockMovementsDialog({
-  open, productId, onClose
-}: Props) {
+export default function StockMovementsDialog({ open, productId, onClose }: Props) {
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+
   const { data, isLoading, error, refetch } = useQuery<Movement[], Error>({
     queryKey: ['movements', productId],
     queryFn: () =>
-      fetch(`/api/stock_movements?productId=${productId}`)
+      fetch(`/api/stock-movement?productId=${productId}`)
         .then(res => {
           if (!res.ok) throw new Error(res.statusText)
           return res.json()
@@ -47,12 +51,19 @@ export default function StockMovementsDialog({
   }, [open, refetch])
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="md"
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         Stock Movement History
         <IconButton onClick={onClose}><CloseIcon /></IconButton>
       </DialogTitle>
-      <DialogContent>
+
+      <DialogContent sx={{ px: fullScreen ? 1 : 3, py: fullScreen ? 1 : 2 }}>
         {isLoading ? (
           <CircularProgress />
         ) : error ? (
@@ -69,14 +80,14 @@ export default function StockMovementsDialog({
             <TableBody>
               {data.map(m => (
                 <TableRow key={m.id}>
-                  <TableCell>
+                  <TableCell sx={{ minWidth: 120 }}>
                     {new Date(m.performed_at).toLocaleString()}
                   </TableCell>
                   <TableCell align="right">
                     {m.quantity_change > 0 ? '+' : ''}
                     {m.quantity_change}
                   </TableCell>
-                  <TableCell>{m.performed_by}</TableCell>
+                  <TableCell sx={{ minWidth: 100 }}>{m.performed_by}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

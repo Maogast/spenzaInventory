@@ -19,10 +19,16 @@ import {
   MenuItem,
   Stack,
   IconButton,
-  Tooltip
+  Tooltip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material'
 import type { SelectChangeEvent } from '@mui/material/Select'
-import { DataGrid, GridColDef, GridCellParams } from '@mui/x-data-grid'
+import {
+  DataGrid,
+  GridColDef,
+  GridCellParams
+} from '@mui/x-data-grid'
 import HistoryIcon from '@mui/icons-material/History'
 import MovementDialog from '../components/MovementDialog'
 import AddStockDialog from '../components/AddStockDialog'
@@ -46,7 +52,9 @@ interface PaginatedProducts {
 export default function Dashboard() {
   const router = useRouter()
   const { query } = router
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
+  const theme = useTheme()
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'))
 
   // Local UI state
   const [filter, setFilter] = useState<string>('')
@@ -58,7 +66,7 @@ export default function Dashboard() {
   const [openNew, setOpenNew] = useState<boolean>(false)
   const [historyProductId, setHistoryProductId] = useState<string | null>(null)
 
-  // Deep‐linking via query params
+  // Deep-linking via query params
   useEffect(() => {
     if (query.new === 'true') {
       setOpenNew(true)
@@ -100,7 +108,7 @@ export default function Dashboard() {
       return res.json() as Promise<Product>
     },
     onSuccess: updated => {
-      queryClient.setQueryData<PaginatedProducts>(
+      qc.setQueryData<PaginatedProducts>(
         ['products', page, pageSize],
         prev => {
           if (!prev) return prev
@@ -116,7 +124,7 @@ export default function Dashboard() {
     }
   })
 
-  // 3) Supabase real‐time subscription
+  // 3) Supabase real-time subscription
   useEffect(() => {
     const channel: RealtimeChannel = supabase
       .channel('products')
@@ -127,7 +135,7 @@ export default function Dashboard() {
           const prod = payload.new as Product
           const oldRec = payload.old as Product | null
 
-          queryClient.setQueryData<PaginatedProducts>(
+          qc.setQueryData<PaginatedProducts>(
             ['products', page, pageSize],
             prev => {
               if (!prev) return prev
@@ -160,7 +168,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [queryClient, page, pageSize])
+  }, [qc, page, pageSize])
 
   if (isLoading) return <Typography>Loading…</Typography>
   if (error) return <Alert severity="error">{error.message}</Alert>
@@ -171,7 +179,7 @@ export default function Dashboard() {
 
   // DataGrid columns
   const columns: GridColDef[] = [
-    { field: 'name', headerName: 'Product', flex: 1 },
+    { field: 'name', headerName: 'Product', flex: 1, minWidth: 120 },
     { field: 'sku', headerName: 'SKU', width: 120 },
     { field: 'category', headerName: 'Category', width: 120 },
     {
@@ -185,23 +193,40 @@ export default function Dashboard() {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 340,
+      width: isSmDown ? 240 : 340,
       renderCell: params => {
         const id = params.row.id as string
         const stock = params.row.current_stock as number
         return (
-          <Stack direction="row" spacing={1}>
+          <Stack
+            direction={isSmDown ? 'column' : 'row'}
+            spacing={1}
+            alignItems={isSmDown ? 'stretch' : 'center'}
+          >
             <Tooltip title="History">
               <IconButton size="small" onClick={() => setHistoryProductId(id)}>
                 <HistoryIcon />
               </IconButton>
             </Tooltip>
-            <Button size="small" onClick={() => setAddInfo({ id, stock })}>Add</Button>
-            <Button size="small" onClick={() => setMoveInfo({ id, stock })}>Move</Button>
+            <Button
+              size="small"
+              onClick={() => setAddInfo({ id, stock })}
+              fullWidth={isSmDown}
+            >
+              Add
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setMoveInfo({ id, stock })}
+              fullWidth={isSmDown}
+            >
+              Move
+            </Button>
             <Button
               size="small"
               color="warning"
               onClick={() => setDeductInfo({ id, stock })}
+              fullWidth={isSmDown}
             >
               Deduct
             </Button>
@@ -212,10 +237,21 @@ export default function Dashboard() {
   ]
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Stack direction="row" justifyContent="space-between" mb={2}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Stack
+        direction={isSmDown ? 'column' : 'row'}
+        justifyContent="space-between"
+        alignItems={isSmDown ? 'stretch' : 'center'}
+        mb={2}
+        spacing={2}
+      >
         <Typography variant="h4">Inventory Dashboard</Typography>
-        <Button variant="contained" onClick={() => setOpenNew(true)}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenNew(true)}
+          fullWidth={isSmDown}
+          sx={{ maxWidth: isSmDown ? '100%' : 180 }}
+        >
           + New Product
         </Button>
       </Stack>
@@ -227,7 +263,7 @@ export default function Dashboard() {
       )}
 
       <Box mb={2}>
-        <FormControl sx={{ minWidth: 180 }}>
+        <FormControl fullWidth={isSmDown} sx={{ minWidth: 180 }}>
           <InputLabel>Category Filter</InputLabel>
           <Select
             value={filter}
@@ -241,7 +277,7 @@ export default function Dashboard() {
         </FormControl>
       </Box>
 
-      <Box sx={{ height: 600 }}>
+      <Box sx={{ height: `calc(100vh - ${isSmDown ? 300 : 350}px)` }}>
         <DataGrid
           rows={visible}
           columns={columns}

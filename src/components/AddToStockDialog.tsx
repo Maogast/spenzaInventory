@@ -1,5 +1,4 @@
-// src/components/AddToStockDialog.tsx
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -8,7 +7,9 @@ import {
   TextField,
   Button,
   Stack,
-  Typography
+  Typography,
+  useTheme,
+  useMediaQuery
 } from '@mui/material'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 
@@ -20,12 +21,11 @@ interface Props {
 }
 
 export default function AddToStockDialog({
-  open,
-  currentStock,
-  onClose,
-  onAdd
+  open, currentStock, onClose, onAdd
 }: Props) {
-  const [amount, setAmount] = useState<number>(0)
+  const theme = useTheme()
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'))
+  const [amount, setAmount] = useState(0)
 
   const handleSave = () => {
     if (amount > 0) onAdd(amount)
@@ -34,7 +34,13 @@ export default function AddToStockDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      fullWidth
+      maxWidth="xs"
+    >
       <DialogTitle>
         <Stack direction="row" alignItems="center" spacing={1}>
           <AddCircleOutlineIcon color="primary" />
@@ -55,19 +61,15 @@ export default function AddToStockDialog({
             type="number"
             value={amount}
             onChange={e => setAmount(Number(e.target.value))}
-            fullWidth
             inputProps={{ min: 0 }}
+            fullWidth
           />
         </Stack>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={amount <= 0}
-        >
+        <Button variant="contained" onClick={handleSave} disabled={amount <= 0}>
           Add
         </Button>
       </DialogActions>

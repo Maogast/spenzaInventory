@@ -3,8 +3,16 @@ import React, { useState, KeyboardEvent } from 'react'
 import { useRouter } from 'next/router'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Box, Button, Typography, Card, CardContent,
-  Stack, TextField
+  Box,
+  Button,
+  Typography,
+  Card,
+  CardContent,
+  Stack,
+  TextField,
+  Container,
+  useTheme,
+  useMediaQuery
 } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 
@@ -22,7 +30,10 @@ const fetchSummary = async (): Promise<Summary> => {
 
 export default function HomePage() {
   const router = useRouter()
-  const [search, setSearch] = useState<string>('')
+  const theme = useTheme()
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const [search, setSearch] = useState('')
   const { data, isLoading, isError } = useQuery<Summary, Error>({
     queryKey: ['summary'],
     queryFn: fetchSummary
@@ -38,20 +49,19 @@ export default function HomePage() {
     }
   }
 
-  // Feature handlers
   const goAdd = () => router.push('/dashboard?new=true', undefined, { shallow: true })
   const goLow = () => router.push('/dashboard?filter=feeds_low', undefined, { shallow: true })
   const goHistory = () =>
     router.push('/dashboard?history=demo-sku-id', undefined, { shallow: true })
 
   return (
-    <Box sx={{ textAlign: 'center', mt: 8, px: 2 }}>
+    <Container maxWidth="md" sx={{ textAlign: 'center', mt: 8 }}>
       <Typography variant="h2" gutterBottom>
         Welcome to Spenza Stock
       </Typography>
 
       <Stack
-        direction={{ xs: 'column', sm: 'row' }}
+        direction={isSmDown ? 'column' : 'row'}
         spacing={2}
         justifyContent="center"
         sx={{ mb: 4 }}
@@ -61,58 +71,61 @@ export default function HomePage() {
           onChange={e => setSearch(e.target.value)}
           onKeyDown={handleSearch}
           placeholder="Search SKU or name…"
-          sx={{ width: 300 }}
+          fullWidth
+          sx={{ maxWidth: isSmDown ? '100%' : 300 }}
         />
+
         <Button
           variant="contained"
           startIcon={<DashboardIcon />}
           href="/dashboard"
+          fullWidth={isSmDown}
+          sx={{ maxWidth: isSmDown ? '100%' : 200 }}
         >
           Go to Dashboard
         </Button>
       </Stack>
 
       <Stack
-        direction="row"
+        direction={isSmDown ? 'column' : 'row'}
         spacing={2}
         justifyContent="center"
         sx={{ mb: 6 }}
       >
-        <Button variant="outlined" onClick={goAdd}>
+        <Button fullWidth={isSmDown} variant="outlined" onClick={goAdd}>
           + Add New Product
         </Button>
-        <Button variant="outlined" onClick={goLow}>
+        <Button fullWidth={isSmDown} variant="outlined" onClick={goLow}>
           🚨 View Low-Stock
         </Button>
-        <Button variant="outlined" onClick={goHistory}>
+        <Button fullWidth={isSmDown} variant="outlined" onClick={goHistory}>
           📜 Recent History
         </Button>
       </Stack>
 
-      {/* KPI Cards… */}
       {isLoading || !data ? (
         <Typography>Loading stats…</Typography>
       ) : isError ? (
         <Typography color="error">Failed to load stats</Typography>
       ) : (
         <Stack
-          direction={{ xs: 'column', md: 'row' }}
+          direction={isSmDown ? 'column' : 'row'}
           spacing={2}
           justifyContent="center"
         >
-          <Card sx={{ minWidth: 200 }}>
+          <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Total SKUs</Typography>
               <Typography variant="h4">{data.totalSKUs}</Typography>
             </CardContent>
           </Card>
-          <Card sx={{ minWidth: 200 }}>
+          <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Total Stock</Typography>
               <Typography variant="h4">{data.totalStock}</Typography>
             </CardContent>
           </Card>
-          <Card sx={{ minWidth: 200 }}>
+          <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Low Stock Alerts</Typography>
               <Typography
@@ -125,6 +138,6 @@ export default function HomePage() {
           </Card>
         </Stack>
       )}
-    </Box>
+    </Container>
   )
 }
