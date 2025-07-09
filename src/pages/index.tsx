@@ -3,7 +3,6 @@ import React, { useState, KeyboardEvent } from 'react'
 import { useRouter } from 'next/router'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Box,
   Button,
   Typography,
   Card,
