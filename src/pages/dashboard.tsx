@@ -1,7 +1,12 @@
+// src/pages/dashboard.tsx
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload
+} from '@supabase/supabase-js'
 import {
   Container,
   Typography,
@@ -16,8 +21,8 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material'
-import type { GridColDef, GridCellParams } from '@mui/x-data-grid'
-import { DataGrid } from '@mui/x-data-grid'
+import type { SelectChangeEvent } from '@mui/material/Select'
+import { DataGrid, GridColDef, GridCellParams } from '@mui/x-data-grid'
 import HistoryIcon from '@mui/icons-material/History'
 import MovementDialog from '../components/MovementDialog'
 import AddStockDialog from '../components/AddStockDialog'
@@ -39,9 +44,11 @@ interface PaginatedProducts {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+  const { query } = router
   const queryClient = useQueryClient()
 
-  // UI & pagination state
+  // Local UI state
   const [filter, setFilter] = useState<string>('')
   const [page, setPage] = useState<number>(0)
   const [pageSize, setPageSize] = useState<number>(10)
@@ -51,7 +58,23 @@ export default function Dashboard() {
   const [openNew, setOpenNew] = useState<boolean>(false)
   const [historyProductId, setHistoryProductId] = useState<string | null>(null)
 
-  // 1) Fetch one page of products
+  // Deep‐linking via query params
+  useEffect(() => {
+    if (query.new === 'true') {
+      setOpenNew(true)
+      router.replace('/dashboard', undefined, { shallow: true })
+    }
+    if (typeof query.filter === 'string') {
+      setFilter(query.filter === 'feeds_low' ? 'feeds' : query.filter)
+      router.replace('/dashboard', undefined, { shallow: true })
+    }
+    if (typeof query.history === 'string') {
+      setHistoryProductId(query.history)
+      router.replace('/dashboard', undefined, { shallow: true })
+    }
+  }, [query, router])
+
+  // 1) Fetch paginated products
   const { data: paginated, isLoading, error } = useQuery<PaginatedProducts, Error>({
     queryKey: ['products', page, pageSize],
     queryFn: () =>
@@ -65,7 +88,7 @@ export default function Dashboard() {
   const products = paginated?.data ?? []
   const rowCount = paginated?.count ?? 0
 
-  // 2) Unified mutation for Add/Move/Deduct
+  // 2) Unified stock mutation
   const updateStock = useMutation<Product, Error, { id: string; newStock: number }>({
     mutationFn: async ({ id, newStock }) => {
       const res = await fetch(`/api/products/${id}`, {
@@ -93,10 +116,9 @@ export default function Dashboard() {
     }
   })
 
-  // 3) Supabase real‐time updates
+  // 3) Supabase real‐time subscription
   useEffect(() => {
-    let channel: RealtimeChannel
-    channel = supabase
+    const channel: RealtimeChannel = supabase
       .channel('products')
       .on(
         'postgres_changes',
@@ -143,13 +165,9 @@ export default function Dashboard() {
   if (isLoading) return <Typography>Loading…</Typography>
   if (error) return <Alert severity="error">{error.message}</Alert>
 
-  // Low-stock alert
+  // UI filters & low-stock count
   const lowCount = products.filter(p => p.current_stock < 1000).length
-
-  // Client‐side filter
-  const visible = filter
-    ? products.filter(p => p.category === filter)
-    : products
+  const visible = filter ? products.filter(p => p.category === filter) : products
 
   // DataGrid columns
   const columns: GridColDef[] = [
@@ -174,19 +192,12 @@ export default function Dashboard() {
         return (
           <Stack direction="row" spacing={1}>
             <Tooltip title="History">
-              <IconButton
-                size="small"
-                onClick={() => setHistoryProductId(id)}
-              >
+              <IconButton size="small" onClick={() => setHistoryProductId(id)}>
                 <HistoryIcon />
               </IconButton>
             </Tooltip>
-            <Button size="small" onClick={() => setAddInfo({ id, stock })}>
-              Add
-            </Button>
-            <Button size="small" onClick={() => setMoveInfo({ id, stock })}>
-              Move
-            </Button>
+            <Button size="small" onClick={() => setAddInfo({ id, stock })}>Add</Button>
+            <Button size="small" onClick={() => setMoveInfo({ id, stock })}>Move</Button>
             <Button
               size="small"
               color="warning"
@@ -220,7 +231,7 @@ export default function Dashboard() {
           <InputLabel>Category Filter</InputLabel>
           <Select
             value={filter}
-            onChange={e => setFilter(e.target.value)}
+            onChange={(e: SelectChangeEvent) => setFilter(e.target.value)}
             label="Category Filter"
           >
             <MenuItem value="">All</MenuItem>
@@ -251,17 +262,15 @@ export default function Dashboard() {
         />
       </Box>
 
+      {/* Dialogs */}
       {addInfo && (
         <AddToStockDialog
           open
           currentStock={addInfo.stock}
           onClose={() => setAddInfo(null)}
-          onAdd={amt =>
-            updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amt })
-          }
+          onAdd={amt => updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amt })}
         />
       )}
-
       {moveInfo && (
         <MovementDialog
           open
@@ -270,7 +279,6 @@ export default function Dashboard() {
           onSaved={ns => updateStock.mutate({ id: moveInfo.id, newStock: ns })}
         />
       )}
-
       {deductInfo && (
         <DeductStockDialog
           open
@@ -279,9 +287,7 @@ export default function Dashboard() {
           onDeduct={ns => updateStock.mutate({ id: deductInfo.id, newStock: ns })}
         />
       )}
-
       <AddStockDialog open={openNew} onClose={() => setOpenNew(false)} />
-
       {historyProductId && (
         <StockMovementsDialog
           open
