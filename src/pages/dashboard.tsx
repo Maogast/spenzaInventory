@@ -1,7 +1,7 @@
-// src/pages/dashboard.tsx
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabaseClient'
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import {
   Container,
   Typography,
@@ -16,7 +16,8 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material'
-import { DataGrid, GridColDef, GridCellParams } from '@mui/x-data-grid'
+import type { GridColDef, GridCellParams } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import HistoryIcon from '@mui/icons-material/History'
 import MovementDialog from '../components/MovementDialog'
 import AddStockDialog from '../components/AddStockDialog'
@@ -38,21 +39,21 @@ interface PaginatedProducts {
 }
 
 export default function Dashboard() {
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
 
   // UI & pagination state
-  const [filter, setFilter] = useState('')
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(10)
+  const [filter, setFilter] = useState<string>('')
+  const [page, setPage] = useState<number>(0)
+  const [pageSize, setPageSize] = useState<number>(10)
   const [moveInfo, setMoveInfo] = useState<{ id: string; stock: number } | null>(null)
   const [deductInfo, setDeductInfo] = useState<{ id: string; stock: number } | null>(null)
   const [addInfo, setAddInfo] = useState<{ id: string; stock: number } | null>(null)
-  const [openNewProduct, setOpenNewProduct] = useState(false)
+  const [openNew, setOpenNew] = useState<boolean>(false)
   const [historyProductId, setHistoryProductId] = useState<string | null>(null)
 
-  // Fetch products page
+  // 1) Fetch one page of products
   const { data: paginated, isLoading, error } = useQuery<PaginatedProducts, Error>({
-    queryKey: ['products', page, pageSize] as const,
+    queryKey: ['products', page, pageSize],
     queryFn: () =>
       fetch(`/api/products?page=${page}&pageSize=${pageSize}`)
         .then(res => {
@@ -64,7 +65,7 @@ export default function Dashboard() {
   const products = paginated?.data ?? []
   const rowCount = paginated?.count ?? 0
 
-  // Unified stock mutation
+  // 2) Unified mutation for Add/Move/Deduct
   const updateStock = useMutation<Product, Error, { id: string; newStock: number }>({
     mutationFn: async ({ id, newStock }) => {
       const res = await fetch(`/api/products/${id}`, {
@@ -73,16 +74,16 @@ export default function Dashboard() {
         body: JSON.stringify({ current_stock: newStock })
       })
       if (!res.ok) throw new Error(res.statusText)
-      return res.json()
+      return res.json() as Promise<Product>
     },
     onSuccess: updated => {
-      qc.setQueryData<PaginatedProducts>(
+      queryClient.setQueryData<PaginatedProducts>(
         ['products', page, pageSize],
         prev => {
           if (!prev) return prev
           return {
             count: prev.count,
-            data: prev.data.map(p => p.id === updated.id ? updated : p)
+            data: prev.data.map(p => (p.id === updated.id ? updated : p))
           }
         }
       )
@@ -92,41 +93,52 @@ export default function Dashboard() {
     }
   })
 
-  // Supabase real-time fallback
+  // 3) Supabase real‐time updates
   useEffect(() => {
-    let channelRef: any
-    const subscribe = async () => {
-      channelRef = await supabase
-        .channel('products')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'products' },
-          ({ eventType, new: rec, old }) => {
-            const prod = rec as Product
-            qc.setQueryData<PaginatedProducts>(
-              ['products', page, pageSize],
-              prev => {
-                if (!prev) return prev
-                const { data, count } = prev
-                switch (eventType) {
-                  case 'INSERT':
-                    return { count: count + 1, data: [prod, ...data.slice(0, pageSize - 1)] }
-                  case 'UPDATE':
-                    return { count, data: data.map(p => p.id === prod.id ? prod : p) }
-                  case 'DELETE':
-                    return { count: count - 1, data: data.filter(p => p.id !== (old as any).id) }
-                  default:
-                    return prev
-                }
+    let channel: RealtimeChannel
+    channel = supabase
+      .channel('products')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        (payload: RealtimePostgresChangesPayload<Product>) => {
+          const prod = payload.new as Product
+          const oldRec = payload.old as Product | null
+
+          queryClient.setQueryData<PaginatedProducts>(
+            ['products', page, pageSize],
+            prev => {
+              if (!prev) return prev
+              const { data, count } = prev
+              switch (payload.eventType) {
+                case 'INSERT':
+                  return {
+                    count: count + 1,
+                    data: [prod, ...data.slice(0, pageSize - 1)]
+                  }
+                case 'UPDATE':
+                  return {
+                    count,
+                    data: data.map(p => (p.id === prod.id ? prod : p))
+                  }
+                case 'DELETE':
+                  return {
+                    count: count - 1,
+                    data: data.filter(p => p.id !== oldRec?.id)
+                  }
+                default:
+                  return prev
               }
-            )
-          }
-        )
-        .subscribe()
+            }
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
-    subscribe()
-    return () => channelRef && supabase.removeChannel(channelRef)
-  }, [qc, page, pageSize])
+  }, [queryClient, page, pageSize])
 
   if (isLoading) return <Typography>Loading…</Typography>
   if (error) return <Alert severity="error">{error.message}</Alert>
@@ -134,12 +146,12 @@ export default function Dashboard() {
   // Low-stock alert
   const lowCount = products.filter(p => p.current_stock < 1000).length
 
-  // Client-side filtering
+  // Client‐side filter
   const visible = filter
     ? products.filter(p => p.category === filter)
     : products
 
-  // DataGrid columns with History
+  // DataGrid columns
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Product', flex: 1 },
     { field: 'sku', headerName: 'SKU', width: 120 },
@@ -155,7 +167,7 @@ export default function Dashboard() {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 320,
+      width: 340,
       renderCell: params => {
         const id = params.row.id as string
         const stock = params.row.current_stock as number
@@ -192,7 +204,7 @@ export default function Dashboard() {
     <Container sx={{ mt: 4 }}>
       <Stack direction="row" justifyContent="space-between" mb={2}>
         <Typography variant="h4">Inventory Dashboard</Typography>
-        <Button variant="contained" onClick={() => setOpenNewProduct(true)}>
+        <Button variant="contained" onClick={() => setOpenNew(true)}>
           + New Product
         </Button>
       </Stack>
@@ -239,45 +251,37 @@ export default function Dashboard() {
         />
       </Box>
 
-      {/* Add existing stock */}
       {addInfo && (
         <AddToStockDialog
           open
           currentStock={addInfo.stock}
           onClose={() => setAddInfo(null)}
-          onAdd={amount =>
-            updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amount })
+          onAdd={amt =>
+            updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amt })
           }
         />
       )}
 
-      {/* Move stock */}
       {moveInfo && (
         <MovementDialog
           open
           currentStock={moveInfo.stock}
           onClose={() => setMoveInfo(null)}
-          onSaved={newStock => updateStock.mutate({ id: moveInfo.id, newStock })}
+          onSaved={ns => updateStock.mutate({ id: moveInfo.id, newStock: ns })}
         />
       )}
 
-      {/* Deduct stock */}
       {deductInfo && (
         <DeductStockDialog
           open
           currentStock={deductInfo.stock}
           onClose={() => setDeductInfo(null)}
-          onDeduct={newStock => updateStock.mutate({ id: deductInfo.id, newStock })}
+          onDeduct={ns => updateStock.mutate({ id: deductInfo.id, newStock: ns })}
         />
       )}
 
-      {/* New product */}
-      <AddStockDialog
-        open={openNewProduct}
-        onClose={() => setOpenNewProduct(false)}
-      />
+      <AddStockDialog open={openNew} onClose={() => setOpenNew(false)} />
 
-      {/* Stock movement history */}
       {historyProductId && (
         <StockMovementsDialog
           open

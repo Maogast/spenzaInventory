@@ -1,32 +1,36 @@
 // next.config.ts
 import type { NextConfig } from 'next'
-import type { Configuration as WebpackConfig } from 'webpack'
+import type { Configuration as WebpackConfig, RuleSetRule } from 'webpack'
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@mui/material', '@mui/x-data-grid', '@mui/utils'],
+  transpilePackages: [
+    '@mui/material',
+    '@mui/x-data-grid',
+    '@mui/utils'
+  ],
 
-  // typed webpack override
   webpack: (config: WebpackConfig) => {
-    // Guarantee module.rules is an array
-    const rules = Array.isArray(config.module?.rules)
-      ? config.module!.rules
+    // Grab existing module and rules (or default to empty)
+    const existingModule = config.module ?? {}
+    const existingRules = Array.isArray(existingModule.rules)
+      ? existingModule.rules
       : []
 
-    // Reassign back so TS knows module.rules is defined
-    if (!config.module) {
-      config.module = { rules } as any
-    } else {
-      config.module.rules = rules
+    // Define the null-loader rule for DataGrid's CSS
+    const nullLoaderRule: RuleSetRule = {
+      test: /[\\/]@mui[\\/]x-data-grid[\\/]esm[\\/]index\.css$/,
+      use: 'null-loader'
     }
 
-    // Strip out any DataGrid CSS imports
-    config.module.rules.unshift({
-      test: /[\\/]@mui[\\/]x-data-grid[\\/]esm[\\/]index\.css$/,
-      use: 'null-loader',
-    })
-
-    return config
-  },
+    // Return a new config object with module.rules overwritten
+    return {
+      ...config,
+      module: {
+        ...existingModule,
+        rules: [nullLoaderRule, ...existingRules]
+      }
+    }
+  }
 }
 
 export default nextConfig
