@@ -1,6 +1,24 @@
-import "@/styles/globals.css";
-import type { AppProps } from "next/app";
+// pages/_app.tsx
+import { AppProps } from 'next/app'
+import Head from 'next/head'
+import { ThemeProvider, CssBaseline } from '@mui/material'
+import theme from '../theme'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />;
+const queryClient = new QueryClient()
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Head>
+        <title>Spenza Inventory</title>
+      </Head>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <QueryClientProvider client={queryClient}>
+          <Component {...pageProps} />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </>
+  )
 }
