@@ -15,9 +15,12 @@
     "@mui/material": "^7.2.0",
     "@mui/styles": "^6.5.0",
     "@mui/x-data-grid": "^8.7.0",
+    "@mui/x-date-pickers": "^8.11.3",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.50.3",
     "@tanstack/react-query": "^5.81.5",
+    "date-fns": "^4.1.0",
+    "lodash.debounce": "^4.0.8",
     "next": "15.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

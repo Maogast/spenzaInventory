@@ -1,3 +1,4 @@
+// src/components/MovementDialog.tsx
 import React, { useState } from 'react'
 import {
   Dialog,

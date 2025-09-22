@@ -1,3 +1,4 @@
+// src/components/DeductStockDialog.tsx
 import React, { useState, ChangeEvent } from 'react'
 import {
   Dialog,

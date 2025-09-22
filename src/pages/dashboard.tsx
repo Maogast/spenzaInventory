@@ -13,7 +13,6 @@ import type {
   RealtimePostgresChangesPayload
 } from '@supabase/supabase-js'
 import {
-  Container,
   Typography,
   Box,
   Alert,
@@ -96,7 +95,7 @@ export default function Dashboard() {
     setSnackbar(prev => ({ ...prev, open: false }))
   }
 
-  // Deep‐link handling
+  // Deep-link handling
   useEffect(() => {
     if (query.new === 'true') {
       setOpenNew(true)
@@ -222,17 +221,17 @@ export default function Dashboard() {
   // Loading & error UI
   if (isLoading) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Skeleton height={40} sx={{ mb: 2 }} />
-        <Skeleton height={500} />
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <Skeleton height={40} sx={{ mb: 2 }} width="100%" />
+        <Skeleton height={500} width="100%" />
+      </Box>
     )
   }
   if (error) {
     return (
-      <Container sx={{ mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
         <Alert severity="error">{error.message}</Alert>
-      </Container>
+      </Box>
     )
   }
 
@@ -318,7 +317,15 @@ export default function Dashboard() {
 
   // 6) Render
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    // The main container now uses a flexbox layout to fill the entire viewport.
+    // The `flexDirection` is set to `column` so content stacks vertically.
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      width: '100vw',
+      p: { xs: 2, sm: 4 }, // Add responsive padding to the outer box
+    }}>
       {/* Header */}
       <Paper elevation={3} sx={{ mb: 3 }}>
         <Toolbar
@@ -379,31 +386,32 @@ export default function Dashboard() {
               </Select>
             </FormControl>
           </Stack>
-
-          <Box sx={{ height: `calc(100vh - ${isSmDown ? 360 : 400}px)` }}>
-            <DataGrid
-              rows={visible}
-              columns={columns}
-              getRowId={row => row.id}
-              pagination
-              paginationMode="server"
-              rowCount={rowCount}
-              paginationModel={{ page, pageSize }}
-              onPaginationModelChange={({ page, pageSize }) => {
-                setPage(page)
-                setPageSize(pageSize)
-              }}
-              pageSizeOptions={[10, 25, 50]}
-              loading={isLoading}
-              sx={{
-                '.low': {
-                  bgcolor: 'rgba(255,82,82,0.1)',
-                  color: '#d32f2f'
-                }
-              }}
-            />
-          </Box>
         </Box>
+      </Paper>
+
+      {/* The DataGrid is now in a flex item that grows to fill the available space. */}
+      <Paper elevation={3} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <DataGrid
+          rows={visible}
+          columns={columns}
+          getRowId={row => row.id}
+          pagination
+          paginationMode="server"
+          rowCount={rowCount}
+          paginationModel={{ page, pageSize }}
+          onPaginationModelChange={({ page, pageSize }) => {
+            setPage(page)
+            setPageSize(pageSize)
+          }}
+          pageSizeOptions={[10, 25, 50]}
+          loading={isLoading}
+          sx={{
+            '.low': {
+              bgcolor: 'rgba(255,82,82,0.1)',
+              color: '#d32f2f'
+            }
+          }}
+        />
       </Paper>
 
       {/* Dialogs */}
@@ -475,6 +483,13 @@ export default function Dashboard() {
           {snackbar.message}
         </MuiAlert>
       </Snackbar>
-    </Container>
+
+      {/* Footer / Signature */}
+      <Box sx={{ p: 2, textAlign: 'center', mt: 2 }}>
+        <Typography variant="caption" color="text.secondary">
+          Developed by Patrick Nyerere 
+        </Typography>
+      </Box>
+    </Box>
   )
 }
