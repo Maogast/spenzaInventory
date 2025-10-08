@@ -1,5 +1,5 @@
 // src/pages/index.tsx
-import React, { useState, KeyboardEvent } from 'react'
+import React, { useState, KeyboardEvent, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -11,7 +11,8 @@ import {
   TextField,
   Container,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Box, // Added Box for the clock container
 } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 
@@ -27,6 +28,77 @@ const fetchSummary = async (): Promise<Summary> => {
   return res.json()
 }
 
+// --- Updated Clock Component ---
+const ClockAndDate: React.FC = () => {
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
+  // New state to track if the component has mounted on the client side
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    // 1. Mark component as mounted (client-side render started)
+    setHasMounted(true)
+
+    // 2. Set up the real-time clock interval
+    const timerId = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+
+    // Clean up the interval when the component unmounts
+    return () => clearInterval(timerId)
+  }, [])
+
+  // If the component has not yet mounted on the client (i.e., this is the server render or before hydration), 
+  // render a stable value (like a placeholder or just null) to prevent mismatch.
+  if (!hasMounted) {
+    // Render a stable value (current date without time to avoid the instant mismatch)
+    const initialDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    
+    return (
+      <Box sx={{ mb: 4, textAlign: 'center', visibility: 'hidden', height: 100 }}>
+        {/* Render placeholder structure to reserve space, but hide content */}
+        <Typography variant="h3" color="primary" sx={{ fontWeight: 700 }}>
+          00:00:00 AM
+        </Typography>
+        <Typography variant="subtitle1" color="textSecondary">
+          {initialDate}
+        </Typography>
+      </Box>
+    )
+  }
+
+  // Once mounted on the client, render the real-time content
+  const time = currentDateTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
+
+  const date = currentDateTime.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+
+  return (
+    <Box sx={{ mb: 4, textAlign: 'center' }}>
+      <Typography variant="h3" color="primary" sx={{ fontWeight: 700 }}>
+        {time}
+      </Typography>
+      <Typography variant="subtitle1" color="textSecondary">
+        {date}
+      </Typography>
+    </Box>
+  )
+}
+// ----------------------------
+
 export default function HomePage() {
   const router = useRouter()
   const theme = useTheme()
@@ -35,7 +107,9 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const { data, isLoading, isError } = useQuery<Summary, Error>({
     queryKey: ['summary'],
-    queryFn: fetchSummary
+    queryFn: fetchSummary,
+    // Refetch every 30 seconds to keep stats fresh
+    refetchInterval: 30000, 
   })
 
   const handleSearch = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -55,6 +129,10 @@ export default function HomePage() {
 
   return (
     <Container maxWidth="md" sx={{ textAlign: 'center', mt: 8 }}>
+      
+      {/* 1. Clock and Date Component */}
+      <ClockAndDate />
+
       <Typography variant="h2" gutterBottom>
         Welcome to Spenza Stock
       </Typography>
