@@ -99,6 +99,85 @@ const ClockAndDate: React.FC = () => {
 }
 // ----------------------------
 
+// --- Developer Signature Component (Extracted for modularity and reliability) ---
+// Removed React.memo to ensure it re-renders fully when given a new key
+const DeveloperSignature: React.FC = () => {
+  // Repeated scrolling text for a seamless loop
+  const signatureText = " | ENGINEERED BY PATRICK NYERERE (BSc EEE/CE) | FULL-STACK DEVELOPMENT | INVENTORY SYSTEM V1.0 | ";
+  // Repeat 10 times to ensure continuous scroll across the screen
+  const repeatedSignature = Array(10).fill(signatureText).join('');
+  
+  return (
+    <>
+      <style jsx global>
+        {`
+          /* Animation for TV News Ticker effect */
+          @keyframes signatureScroll {
+            /* Start off-screen right */
+            0% { transform: translateX(100%); } 
+            /* End off-screen left */
+            100% { transform: translateX(-100%); }
+          }
+
+          /* General styling for the text container for the news ticker effect */
+          .ticker-wrap {
+            overflow: hidden; /* Hide the scrolling content outside this box */
+            white-space: nowrap; /* Prevent the text from wrapping */
+          }
+
+          /* Style for the text content itself */
+          .ticker-text {
+            /* Animation duration significantly increased to 200s for a very slow scroll */
+            animation: signatureScroll 200s linear infinite; 
+            display: inline-block;
+          }
+        `}
+      </style>
+
+      <Box sx={{ 
+        mt: 4, // REDUCED MARGIN from 10 to 4 to make it appear sooner
+        py: 1.5, 
+        // Dark teal/green background
+        background: '#004d40', 
+        // Hard border using light green/lime
+        borderTop: `2px solid #aeea00`,
+        borderBottom: `2px solid #aeea00`,
+        borderRadius: 0, 
+        boxShadow: `0 4px 15px rgba(0, 0, 0, 0.5)`,
+        
+        // --- Ticker Wrapper Style ---
+        display: 'flex',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+      }}
+      className="ticker-wrap" // Use class to apply overflow: hidden
+      >
+        <Typography 
+          variant="body2"
+          color="#aeea00" // Text color set to lime green for high contrast
+          className="ticker-text" // Use class to apply animation
+          sx={{ 
+            fontFamily: 'monospace', 
+            fontWeight: 800, 
+            letterSpacing: '0.2em', 
+            textTransform: 'uppercase',
+            // High-tech glow effect, matching the lime color
+            textShadow: `0 0 10px #aeea00`,
+            px: 2, 
+            fontSize: '0.85rem'
+          }}
+        >
+          {/* Use the repeated signature for a continuous scroll */}
+          {repeatedSignature}
+        </Typography>
+      </Box>
+    </>
+  )
+};
+DeveloperSignature.displayName = 'DeveloperSignature';
+// ----------------------------
+
+
 export default function HomePage() {
   const router = useRouter()
   const theme = useTheme()
@@ -111,6 +190,12 @@ export default function HomePage() {
     // Refetch every 30 seconds to keep stats fresh
     refetchInterval: 30000, 
   })
+
+  // State to force re-render and reset CSS animation on component mount/remount
+  // When HomePage remounts after navigation, this state is re-initialized with a new timestamp, 
+  // forcing React to fully recreate the DeveloperSignature component and restart the animation.
+  const [signatureKey] = useState(Date.now());
+
 
   const handleSearch = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && search.trim()) {
@@ -190,18 +275,23 @@ export default function HomePage() {
           spacing={2}
           justifyContent="center"
         >
+          {/* Total SKUs Card */}
           <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Total SKUs</Typography>
               <Typography variant="h4">{data.totalSKUs}</Typography>
             </CardContent>
           </Card>
+          
+          {/* Total Stock Card */}
           <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Total Stock</Typography>
               <Typography variant="h4">{data.totalStock}</Typography>
             </CardContent>
           </Card>
+          
+          {/* Low Stock Alerts Card */}
           <Card sx={{ flex: 1, minWidth: 0 }}>
             <CardContent>
               <Typography variant="h6">Low Stock Alerts</Typography>
@@ -215,6 +305,11 @@ export default function HomePage() {
           </Card>
         </Stack>
       )}
+
+      {/* 2. Developer Signature - Fancy and Amazing Look with Scrolling Animation */}
+      {/* Pass the dynamic key to force component remount and animation reset */}
+      <DeveloperSignature key={signatureKey} />
+      
     </Container>
   )
 }
