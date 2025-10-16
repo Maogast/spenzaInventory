@@ -45,6 +45,7 @@ import InventoryIcon from '@mui/icons-material/Inventory'
 import RemoveIcon from '@mui/icons-material/Remove'
 import SearchIcon from '@mui/icons-material/Search'
 import ClearIcon from '@mui/icons-material/Clear'
+import LogoutIcon from '@mui/icons-material/Logout'
 
 import MovementDialog from '../components/MovementDialog'
 import AddProductDialog from '../components/AddProductDialog'
@@ -73,6 +74,9 @@ export default function Dashboard() {
   const qc = useQueryClient()
   const theme = useTheme()
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'))
+
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   // UI state
   const [filter, setFilter] = useState<string>('')
@@ -107,6 +111,16 @@ export default function Dashboard() {
     severity: 'success' | 'error' | 'info' | 'warning'
   }>({ open: false, message: '', severity: 'success' })
 
+  // Check authentication on component mount
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem('authenticated') === 'true'
+    setIsAuthenticated(authStatus)
+    
+    if (!authStatus) {
+      router.push('/auth/signin')
+    }
+  }, [router])
+
   const showMsg = (
     message: string,
     severity: typeof snackbar.severity = 'success'
@@ -116,6 +130,13 @@ export default function Dashboard() {
 
   const closeMsg = () => {
     setSnackbar(prev => ({ ...prev, open: false }))
+  }
+
+  // Handle sign out
+  const handleSignOut = () => {
+    sessionStorage.removeItem('authenticated')
+    sessionStorage.removeItem('user')
+    router.push('/auth/signin')
   }
 
   // Debounce effect for search
@@ -274,6 +295,30 @@ export default function Dashboard() {
 
     return () => void supabase.removeChannel(channel)
   }, [qc, page, pageSize])
+
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="h6" color="white">
+          Checking authentication...
+        </Typography>
+      </Box>
+    )
+  }
+
+  // If not authenticated, don't render the dashboard
+  if (!isAuthenticated) {
+    return null // Will redirect in useEffect
+  }
 
   // Enhanced DataGrid columns with proper typing
   const columns: GridColDef[] = [
@@ -581,6 +626,21 @@ export default function Dashboard() {
               }}
             >
               Home
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<LogoutIcon />}
+              onClick={handleSignOut}
+              sx={{
+                color: 'white',
+                borderColor: 'white',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  borderColor: 'white'
+                }
+              }}
+            >
+              Sign Out
             </Button>
             <Button
               variant="contained"

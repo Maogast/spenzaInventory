@@ -17,13 +17,13 @@ import {
   InputAdornment,
   Alert,
 } from '@mui/material'
-import DashboardIcon from '@mui/icons-material/Dashboard'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import WarningIcon from '@mui/icons-material/Warning'
 import HistoryIcon from '@mui/icons-material/History'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import LoginIcon from '@mui/icons-material/Login'
 
 interface Summary {
   totalSKUs: number
@@ -159,6 +159,7 @@ export default function HomePage() {
   const router = useRouter()
   const theme = useTheme()
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'))
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
   const [search, setSearch] = useState('')
   const { data, isLoading, isError } = useQuery<Summary, Error>({
@@ -169,20 +170,78 @@ export default function HomePage() {
 
   const [signatureKey] = useState(Date.now())
 
+  // Check authentication status on component mount
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem('authenticated') === 'true'
+    setIsAuthenticated(authStatus)
+    
+    // If already authenticated, redirect to dashboard
+    if (authStatus) {
+      router.push('/dashboard')
+    }
+  }, [router])
+
   const handleSearch = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && search.trim()) {
-      router.push(
-        { pathname: '/dashboard', query: { search: search.trim() } },
-        undefined,
-        { shallow: true }
-      )
+      // Redirect to signin first, then dashboard with search query
+      sessionStorage.setItem('searchAfterAuth', search.trim())
+      router.push('/auth/signin')
     }
   }
 
-  const goAdd = () => router.push('/dashboard?new=true', undefined, { shallow: true })
-  const goLow = () => router.push('/dashboard?filter=feeds_low', undefined, { shallow: true })
-  const goHistory = () => router.push('/dashboard?history=demo-sku-id', undefined, { shallow: true })
+  // Removed unused handleDashboardAccess function
 
+  const goAdd = () => {
+    const authStatus = sessionStorage.getItem('authenticated') === 'true'
+    if (authStatus) {
+      router.push('/dashboard?new=true')
+    } else {
+      sessionStorage.setItem('redirectAfterAuth', '/dashboard?new=true')
+      router.push('/auth/signin')
+    }
+  }
+
+  const goLow = () => {
+    const authStatus = sessionStorage.getItem('authenticated') === 'true'
+    if (authStatus) {
+      router.push('/dashboard?filter=feeds_low')
+    } else {
+      sessionStorage.setItem('redirectAfterAuth', '/dashboard?filter=feeds_low')
+      router.push('/auth/signin')
+    }
+  }
+
+  const goHistory = () => {
+    const authStatus = sessionStorage.getItem('authenticated') === 'true'
+    if (authStatus) {
+      router.push('/dashboard?history=demo-sku-id')
+    } else {
+      sessionStorage.setItem('redirectAfterAuth', '/dashboard?history=demo-sku-id')
+      router.push('/auth/signin')
+    }
+  }
+
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="h6" color="white">
+          Loading...
+        </Typography>
+      </Box>
+    )
+  }
+
+  // If authenticated, this page won't render as we redirect to dashboard
+  // This return is only for unauthenticated users
   return (
     <Box
       sx={{
@@ -216,6 +275,21 @@ export default function HomePage() {
             Professional Inventory Management System
           </Typography>
 
+          {/* Authentication Required Alert - FIXED THIS LINE */}
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mb: 3,
+              maxWidth: 600,
+              mx: 'auto',
+              background: 'rgba(255,255,255,0.1)',
+              color: 'white',
+              '& .MuiAlert-icon': { color: '#aeea00' }
+            }}
+          >
+            Authentication required to access dashboard features
+          </Alert> {/* Changed from </Typography> to </Alert> */}
+
           {/* Clock and Date */}
           <ClockAndDate />
 
@@ -225,7 +299,7 @@ export default function HomePage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               onKeyDown={handleSearch}
-              placeholder="Search products or SKU..."
+              placeholder="Search products or SKU (requires login)..."
               fullWidth
               InputProps={{
                 startAdornment: (
@@ -249,7 +323,7 @@ export default function HomePage() {
             />
           </Box>
 
-          {/* Action Buttons */}
+          {/* Main Action Button - Sign In */}
           <Stack
             direction={isSmDown ? 'column' : 'row'}
             spacing={2}
@@ -258,8 +332,8 @@ export default function HomePage() {
           >
             <Button
               variant="contained"
-              startIcon={<DashboardIcon />}
-              href="/dashboard"
+              startIcon={<LoginIcon />}
+              onClick={() => router.push('/auth/signin')}
               sx={{
                 minWidth: 200,
                 background: 'linear-gradient(45deg, #00b09b 0%, #96c93d 100%)',
@@ -273,10 +347,11 @@ export default function HomePage() {
                 transition: 'all 0.2s'
               }}
             >
-              Go to Dashboard
+              Sign In to Access Dashboard
             </Button>
           </Stack>
 
+          {/* Feature Buttons (will redirect to login) */}
           <Stack
             direction={isSmDown ? 'column' : 'row'}
             spacing={2}
@@ -336,7 +411,7 @@ export default function HomePage() {
           </Stack>
         </Paper>
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards - Public View */}
         {isLoading || !data ? (
           <Typography variant="h6" sx={{ textAlign: 'center', color: 'white' }}>
             Loading stats…
