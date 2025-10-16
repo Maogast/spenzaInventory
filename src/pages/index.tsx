@@ -12,9 +12,18 @@ import {
   Container,
   useTheme,
   useMediaQuery,
-  Box, // Added Box for the clock container
+  Box,
+  Paper,
+  InputAdornment,
+  Alert,
 } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
+import SearchIcon from '@mui/icons-material/Search'
+import AddIcon from '@mui/icons-material/Add'
+import WarningIcon from '@mui/icons-material/Warning'
+import HistoryIcon from '@mui/icons-material/History'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 
 interface Summary {
   totalSKUs: number
@@ -28,29 +37,20 @@ const fetchSummary = async (): Promise<Summary> => {
   return res.json()
 }
 
-// --- Updated Clock Component ---
+// --- Enhanced Clock Component ---
 const ClockAndDate: React.FC = () => {
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
-  // New state to track if the component has mounted on the client side
   const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {
-    // 1. Mark component as mounted (client-side render started)
     setHasMounted(true)
-
-    // 2. Set up the real-time clock interval
     const timerId = setInterval(() => {
       setCurrentDateTime(new Date())
     }, 1000)
-
-    // Clean up the interval when the component unmounts
     return () => clearInterval(timerId)
   }, [])
 
-  // If the component has not yet mounted on the client (i.e., this is the server render or before hydration), 
-  // render a stable value (like a placeholder or just null) to prevent mismatch.
   if (!hasMounted) {
-    // Render a stable value (current date without time to avoid the instant mismatch)
     const initialDate = new Date().toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -59,19 +59,17 @@ const ClockAndDate: React.FC = () => {
     })
     
     return (
-      <Box sx={{ mb: 4, textAlign: 'center', visibility: 'hidden', height: 100 }}>
-        {/* Render placeholder structure to reserve space, but hide content */}
-        <Typography variant="h3" color="primary" sx={{ fontWeight: 700 }}>
+      <Box sx={{ mb: 4, textAlign: 'center', visibility: 'hidden', height: 120 }}>
+        <Typography variant="h3" color="white" sx={{ fontWeight: 700 }}>
           00:00:00 AM
         </Typography>
-        <Typography variant="subtitle1" color="textSecondary">
+        <Typography variant="h6" color="rgba(255,255,255,0.8)">
           {initialDate}
         </Typography>
       </Box>
     )
   }
 
-  // Once mounted on the client, render the real-time content
   const time = currentDateTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -88,46 +86,34 @@ const ClockAndDate: React.FC = () => {
 
   return (
     <Box sx={{ mb: 4, textAlign: 'center' }}>
-      <Typography variant="h3" color="primary" sx={{ fontWeight: 700 }}>
+      <Typography variant="h3" color="white" sx={{ fontWeight: 700, textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
         {time}
       </Typography>
-      <Typography variant="subtitle1" color="textSecondary">
+      <Typography variant="h6" color="rgba(255,255,255,0.9)" sx={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>
         {date}
       </Typography>
     </Box>
   )
 }
-// ----------------------------
 
-// --- Developer Signature Component (Extracted for modularity and reliability) ---
-// Removed React.memo to ensure it re-renders fully when given a new key
+// --- Enhanced Developer Signature ---
 const DeveloperSignature: React.FC = () => {
-  // Repeated scrolling text for a seamless loop
   const signatureText = " | ENGINEERED BY PATRICK NYERERE (BSc EEE/CE) | FULL-STACK DEVELOPMENT | INVENTORY SYSTEM V1.0 | ";
-  // Repeat 10 times to ensure continuous scroll across the screen
   const repeatedSignature = Array(10).fill(signatureText).join('');
   
   return (
     <>
       <style jsx global>
         {`
-          /* Animation for TV News Ticker effect */
           @keyframes signatureScroll {
-            /* Start off-screen right */
-            0% { transform: translateX(100%); } 
-            /* End off-screen left */
+            0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
           }
-
-          /* General styling for the text container for the news ticker effect */
           .ticker-wrap {
-            overflow: hidden; /* Hide the scrolling content outside this box */
-            white-space: nowrap; /* Prevent the text from wrapping */
+            overflow: hidden;
+            white-space: nowrap;
           }
-
-          /* Style for the text content itself */
           .ticker-text {
-            /* Animation duration significantly increased to 200s for a very slow scroll */
             animation: signatureScroll 200s linear infinite; 
             display: inline-block;
           }
@@ -135,48 +121,39 @@ const DeveloperSignature: React.FC = () => {
       </style>
 
       <Box sx={{ 
-        mt: 4, // REDUCED MARGIN from 10 to 4 to make it appear sooner
-        py: 1.5, 
-        // Dark teal/green background
-        background: '#004d40', 
-        // Hard border using light green/lime
+        mt: 6,
+        py: 1.5,
+        background: 'linear-gradient(45deg, #2c3e50 0%, #3498db 100%)',
         borderTop: `2px solid #aeea00`,
         borderBottom: `2px solid #aeea00`,
         borderRadius: 0, 
         boxShadow: `0 4px 15px rgba(0, 0, 0, 0.5)`,
-        
-        // --- Ticker Wrapper Style ---
         display: 'flex',
         justifyContent: 'flex-start',
         alignItems: 'center',
       }}
-      className="ticker-wrap" // Use class to apply overflow: hidden
+      className="ticker-wrap"
       >
         <Typography 
           variant="body2"
-          color="#aeea00" // Text color set to lime green for high contrast
-          className="ticker-text" // Use class to apply animation
+          color="#aeea00"
+          className="ticker-text"
           sx={{ 
             fontFamily: 'monospace', 
             fontWeight: 800, 
             letterSpacing: '0.2em', 
             textTransform: 'uppercase',
-            // High-tech glow effect, matching the lime color
             textShadow: `0 0 10px #aeea00`,
             px: 2, 
             fontSize: '0.85rem'
           }}
         >
-          {/* Use the repeated signature for a continuous scroll */}
           {repeatedSignature}
         </Typography>
       </Box>
     </>
   )
-};
-DeveloperSignature.displayName = 'DeveloperSignature';
-// ----------------------------
-
+}
 
 export default function HomePage() {
   const router = useRouter()
@@ -187,15 +164,10 @@ export default function HomePage() {
   const { data, isLoading, isError } = useQuery<Summary, Error>({
     queryKey: ['summary'],
     queryFn: fetchSummary,
-    // Refetch every 30 seconds to keep stats fresh
-    refetchInterval: 30000, 
+    refetchInterval: 30000,
   })
 
-  // State to force re-render and reset CSS animation on component mount/remount
-  // When HomePage remounts after navigation, this state is re-initialized with a new timestamp, 
-  // forcing React to fully recreate the DeveloperSignature component and restart the animation.
-  const [signatureKey] = useState(Date.now());
-
+  const [signatureKey] = useState(Date.now())
 
   const handleSearch = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && search.trim()) {
@@ -209,107 +181,315 @@ export default function HomePage() {
 
   const goAdd = () => router.push('/dashboard?new=true', undefined, { shallow: true })
   const goLow = () => router.push('/dashboard?filter=feeds_low', undefined, { shallow: true })
-  const goHistory = () =>
-    router.push('/dashboard?history=demo-sku-id', undefined, { shallow: true })
+  const goHistory = () => router.push('/dashboard?history=demo-sku-id', undefined, { shallow: true })
 
   return (
-    <Container maxWidth="md" sx={{ textAlign: 'center', mt: 8 }}>
-      
-      {/* 1. Clock and Date Component */}
-      <ClockAndDate />
-
-      <Typography variant="h2" gutterBottom>
-        Welcome to Spenza Stock
-      </Typography>
-
-      <Stack
-        direction={isSmDown ? 'column' : 'row'}
-        spacing={2}
-        justifyContent="center"
-        sx={{ mb: 4 }}
-      >
-        <TextField
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onKeyDown={handleSearch}
-          placeholder="Search SKU or name…"
-          fullWidth
-          sx={{ maxWidth: isSmDown ? '100%' : 300 }}
-        />
-
-        <Button
-          variant="contained"
-          startIcon={<DashboardIcon />}
-          href="/dashboard"
-          fullWidth={isSmDown}
-          sx={{ maxWidth: isSmDown ? '100%' : 200 }}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        py: 4,
+      }}
+    >
+      <Container maxWidth="lg">
+        {/* Enhanced Header */}
+        <Paper 
+          elevation={8}
+          sx={{
+            mb: 4,
+            background: 'linear-gradient(45deg, #2c3e50 0%, #3498db 100%)',
+            color: 'white',
+            borderRadius: 3,
+            overflow: 'hidden',
+            textAlign: 'center',
+            p: 4
+          }}
         >
-          Go to Dashboard
-        </Button>
-      </Stack>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
+            <InventoryIcon sx={{ fontSize: 48, color: 'white' }} />
+            <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'white' }}>
+              Spenza Stock
+            </Typography>
+          </Box>
+          
+          <Typography variant="h5" sx={{ color: 'rgba(255,255,255,0.9)', mb: 3 }}>
+            Professional Inventory Management System
+          </Typography>
 
-      <Stack
-        direction={isSmDown ? 'column' : 'row'}
-        spacing={2}
-        justifyContent="center"
-        sx={{ mb: 6 }}
-      >
-        <Button fullWidth={isSmDown} variant="outlined" onClick={goAdd}>
-          + Add New Product
-        </Button>
-        <Button fullWidth={isSmDown} variant="outlined" onClick={goLow}>
-          🚨 View Low-Stock
-        </Button>
-        <Button fullWidth={isSmDown} variant="outlined" onClick={goHistory}>
-          📜 Recent History
-        </Button>
-      </Stack>
+          {/* Clock and Date */}
+          <ClockAndDate />
 
-      {isLoading || !data ? (
-        <Typography>Loading stats…</Typography>
-      ) : isError ? (
-        <Typography color="error">Failed to load stats</Typography>
-      ) : (
-        <Stack
-          direction={isSmDown ? 'column' : 'row'}
-          spacing={2}
-          justifyContent="center"
+          {/* Search Section */}
+          <Box sx={{ maxWidth: 600, mx: 'auto', mb: 3 }}>
+            <TextField
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={handleSearch}
+              placeholder="Search products or SKU..."
+              fullWidth
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: '#2c3e50' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'white',
+                  borderRadius: 2,
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'white',
+                  },
+                },
+              }}
+            />
+          </Box>
+
+          {/* Action Buttons */}
+          <Stack
+            direction={isSmDown ? 'column' : 'row'}
+            spacing={2}
+            justifyContent="center"
+            sx={{ mb: 2 }}
+          >
+            <Button
+              variant="contained"
+              startIcon={<DashboardIcon />}
+              href="/dashboard"
+              sx={{
+                minWidth: 200,
+                background: 'linear-gradient(45deg, #00b09b 0%, #96c93d 100%)',
+                fontWeight: 'bold',
+                boxShadow: 3,
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #00917a 0%, #7ba82d 100%)',
+                  boxShadow: 6,
+                  transform: 'translateY(-2px)'
+                },
+                transition: 'all 0.2s'
+              }}
+            >
+              Go to Dashboard
+            </Button>
+          </Stack>
+
+          <Stack
+            direction={isSmDown ? 'column' : 'row'}
+            spacing={2}
+            justifyContent="center"
+          >
+            <Button 
+              fullWidth={isSmDown} 
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={goAdd}
+              sx={{
+                background: 'linear-gradient(45deg, #2196f3 0%, #21cbf3 100%)',
+                fontWeight: 'bold',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1976d2 0%, #00acc1 100%)',
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s'
+              }}
+            >
+              Add New Product
+            </Button>
+            <Button 
+              fullWidth={isSmDown} 
+              variant="contained"
+              startIcon={<WarningIcon />}
+              onClick={goLow}
+              sx={{
+                background: 'linear-gradient(45deg, #ff416c 0%, #ff4b2b 100%)',
+                fontWeight: 'bold',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #e03560 0%, #e63a1f 100%)',
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s'
+              }}
+            >
+              View Low Stock
+            </Button>
+            <Button 
+              fullWidth={isSmDown} 
+              variant="contained"
+              startIcon={<HistoryIcon />}
+              onClick={goHistory}
+              sx={{
+                background: 'linear-gradient(45deg, #9c27b0 0%, #e040fb 100%)',
+                fontWeight: 'bold',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #7b1fa2 0%, #c2185b 100%)',
+                  transform: 'translateY(-1px)'
+                },
+                transition: 'all 0.2s'
+              }}
+            >
+              Recent History
+            </Button>
+          </Stack>
+        </Paper>
+
+        {/* Statistics Cards */}
+        {isLoading || !data ? (
+          <Typography variant="h6" sx={{ textAlign: 'center', color: 'white' }}>
+            Loading stats…
+          </Typography>
+        ) : isError ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            Failed to load statistics
+          </Alert>
+        ) : (
+          <Stack
+            direction={isSmDown ? 'column' : 'row'}
+            spacing={3}
+            justifyContent="center"
+            sx={{ mb: 6 }}
+          >
+            {/* Total SKUs Card */}
+            <Card 
+              sx={{ 
+                flex: 1, 
+                minWidth: 0,
+                background: 'linear-gradient(45deg, #00c853 0%, #64dd17 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: 6
+              }}
+            >
+              <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                <InventoryIcon sx={{ fontSize: 48, mb: 2, opacity: 0.9 }} />
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Total SKUs
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                  {data.totalSKUs}
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            {/* Total Stock Card */}
+            <Card 
+              sx={{ 
+                flex: 1, 
+                minWidth: 0,
+                background: 'linear-gradient(45deg, #2979ff 0%, #00b0ff 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: 6
+              }}
+            >
+              <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                <TrendingUpIcon sx={{ fontSize: 48, mb: 2, opacity: 0.9 }} />
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Total Stock
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                  {data.totalStock.toLocaleString()}
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            {/* Low Stock Alerts Card */}
+            <Card 
+              sx={{ 
+                flex: 1, 
+                minWidth: 0,
+                background: data.lowCount > 0 
+                  ? 'linear-gradient(45deg, #ff416c 0%, #ff4b2b 100%)'
+                  : 'linear-gradient(45deg, #00b09b 0%, #96c93d 100%)',
+                color: 'white',
+                borderRadius: 3,
+                boxShadow: 6
+              }}
+            >
+              <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                <WarningIcon sx={{ fontSize: 48, mb: 2, opacity: 0.9 }} />
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Low Stock Alerts
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                  {data.lowCount}
+                </Typography>
+                {data.lowCount > 0 && (
+                  <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
+                    Immediate attention required
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Stack>
+        )}
+
+        {/* Quick Stats Alert */}
+        {data && data.lowCount > 0 && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 4,
+              borderRadius: 3,
+              background: 'linear-gradient(45deg, #ff9800 0%, #ff5722 100%)',
+              color: 'white',
+              fontWeight: 'bold',
+              '& .MuiAlert-icon': { color: 'white' }
+            }}
+          >
+            🚨 {data.lowCount} product{data.lowCount !== 1 ? 's' : ''} require immediate stock attention!
+          </Alert>
+        )}
+
+        {/* Additional Info Section */}
+        <Paper
+          elevation={4}
+          sx={{
+            p: 4,
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 3,
+            color: 'white',
+            textAlign: 'center'
+          }}
         >
-          {/* Total SKUs Card */}
-          <Card sx={{ flex: 1, minWidth: 0 }}>
-            <CardContent>
-              <Typography variant="h6">Total SKUs</Typography>
-              <Typography variant="h4">{data.totalSKUs}</Typography>
-            </CardContent>
-          </Card>
-          
-          {/* Total Stock Card */}
-          <Card sx={{ flex: 1, minWidth: 0 }}>
-            <CardContent>
-              <Typography variant="h6">Total Stock</Typography>
-              <Typography variant="h4">{data.totalStock}</Typography>
-            </CardContent>
-          </Card>
-          
-          {/* Low Stock Alerts Card */}
-          <Card sx={{ flex: 1, minWidth: 0 }}>
-            <CardContent>
-              <Typography variant="h6">Low Stock Alerts</Typography>
-              <Typography
-                variant="h4"
-                color={data.lowCount > 0 ? 'error' : 'success'}
-              >
-                {data.lowCount}
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+            System Features
+          </Typography>
+          <Stack direction={isSmDown ? 'column' : 'row'} spacing={3} justifyContent="center">
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" color="#aeea00" gutterBottom>
+                📊 Real-time Tracking
               </Typography>
-            </CardContent>
-          </Card>
-        </Stack>
-      )}
+              <Typography variant="body2">
+                Live inventory updates with real-time stock movements
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" color="#aeea00" gutterBottom>
+                🔔 Smart Alerts
+              </Typography>
+              <Typography variant="body2">
+                Automatic low-stock notifications and warnings
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" color="#aeea00" gutterBottom>
+                📈 Analytics
+              </Typography>
+              <Typography variant="body2">
+                Comprehensive reporting and stock analytics
+              </Typography>
+            </Box>
+          </Stack>
+        </Paper>
 
-      {/* 2. Developer Signature - Fancy and Amazing Look with Scrolling Animation */}
-      {/* Pass the dynamic key to force component remount and animation reset */}
-      <DeveloperSignature key={signatureKey} />
-      
-    </Container>
+        {/* Developer Signature */}
+        <DeveloperSignature key={signatureKey} />
+      </Container>
+    </Box>
   )
 }
