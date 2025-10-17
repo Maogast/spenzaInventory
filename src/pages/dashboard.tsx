@@ -903,6 +903,7 @@ export default function Dashboard() {
         <AddToStockDialog
           open
           currentStock={addInfo.stock}
+          productName={products.find(p => p.id === addInfo.id)?.name || 'Unknown Product'}
           onClose={() => setAddInfo(null)}
           onAdd={amt =>
             updateStock.mutate({ id: addInfo.id, newStock: addInfo.stock + amt })
@@ -913,6 +914,7 @@ export default function Dashboard() {
         <MovementDialog
           open
           currentStock={moveInfo.stock}
+          productName={products.find(p => p.id === moveInfo.id)?.name || 'Unknown Product'}
           onClose={() => setMoveInfo(null)}
           onSaved={ns => updateStock.mutate({ id: moveInfo.id, newStock: ns })}
         />
@@ -921,6 +923,7 @@ export default function Dashboard() {
         <DeductStockDialog
           open
           currentStock={deductInfo.stock}
+          productName={products.find(p => p.id === deductInfo.id)?.name || 'Unknown Product'}
           onClose={() => setDeductInfo(null)}
           onDeduct={ns =>
             updateStock.mutate({ id: deductInfo.id, newStock: ns })

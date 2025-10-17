@@ -1,28 +1,64 @@
-// src/pages/api/summary.ts
+// pages/api/summary.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs'
 
 export default async function handler(
-  _req: NextApiRequest,
+  req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // 1) Count total SKUs
-  const { count: totalSKUs } = await supabaseAdmin
-    .from('products')
-    .select('id', { count: 'exact', head: true })
+  // Create the updated Supabase client
+  const supabaseAdmin = createPagesServerClient(
+    { req, res },
+    {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role for admin operations
+    }
+  )
 
-  // 2) Sum all stock via SQL RPC
-  // SQL function: CREATE FUNCTION sum_stock() RETURNS TABLE(total_stock bigint) AS $$
-  //   SELECT SUM(current_stock)::bigint AS total_stock FROM products;
-  // $$ LANGUAGE SQL STABLE;
-  const { data: sumData } = await supabaseAdmin.rpc('sum_stock')
-  const totalStock = sumData?.[0]?.total_stock ?? 0
+  try {
+    // 1) Count total SKUs
+    const { count: totalSKUs, error: skuError } = await supabaseAdmin
+      .from('products')
+      .select('id', { count: 'exact', head: true })
 
-  // 3) Count low-stock SKUs (<1000)
-  const { count: lowCount } = await supabaseAdmin
-    .from('products')
-    .select('id', { count: 'exact', head: true })
-    .lt('current_stock', 1000)
+    if (skuError) {
+      console.error('Error counting total SKUs:', skuError)
+      return res.status(500).json({ error: 'Failed to count total SKUs' })
+    }
 
-  return res.status(200).json({ totalSKUs, totalStock, lowCount })
+    // 2) Sum all stock via SQL RPC
+    const { data: sumData, error: sumError } = await supabaseAdmin.rpc('sum_stock')
+    
+    if (sumError) {
+      console.error('Error summing stock:', sumError)
+      return res.status(500).json({ error: 'Failed to sum total stock' })
+    }
+
+    const totalStock = sumData?.[0]?.total_stock ?? 0
+
+    // 3) Count low-stock SKUs (<1000)
+    const { count: lowCount, error: lowError } = await supabaseAdmin
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .lt('current_stock', 1000)
+
+    if (lowError) {
+      console.error('Error counting low stock:', lowError)
+      return res.status(500).json({ error: 'Failed to count low stock items' })
+    }
+
+    // Return original format for backward compatibility
+    return res.status(200).json({ 
+      totalSKUs: totalSKUs || 0, 
+      totalStock, 
+      lowCount: lowCount || 0 
+    })
+
+  } catch (error) {
+    console.error('Summary API error:', error)
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    })
+  }
 }

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 // Define a type for the update payload to avoid using 'any' on known fields.
@@ -19,7 +19,15 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const supabase = createServerSupabaseClient({ req, res })
+  // Replace createServerSupabaseClient with createPagesServerClient
+  const supabase = createPagesServerClient(
+    { req, res },
+    {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    }
+  )
+  
   const {
     data: { session }
   } = await supabase.auth.getSession()

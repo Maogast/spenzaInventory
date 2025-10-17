@@ -1,14 +1,20 @@
-// pages/api/products/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Build a Supabase client that can read the user session
-  const supabase = createServerSupabaseClient({ req, res })
+  // Replace createServerSupabaseClient with createPagesServerClient
+  const supabase = createPagesServerClient(
+    { req, res },
+    {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    }
+  )
+  
   const {
     data: { session }
   } = await supabase.auth.getSession()
