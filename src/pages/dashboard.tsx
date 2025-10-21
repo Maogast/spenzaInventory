@@ -847,7 +847,7 @@ export default function Dashboard() {
             },
             '& .MuiDataGrid-columnHeaders': {
               backgroundColor: '#2c3e50',
-              color: 'white',
+              color: 'black',
               fontSize: '1rem',
               fontWeight: 'bold',
             },
